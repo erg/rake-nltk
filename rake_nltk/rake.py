@@ -29,6 +29,7 @@ class Rake(object):
         self,
         stopwords=None,
         punctuations=None,
+        tokenizer=None,
         language="english",
         ranking_metric=Metric.DEGREE_TO_FREQUENCY_RATIO,
         max_length=100000,
@@ -59,6 +60,11 @@ class Rake(object):
         self.punctuations = punctuations
         if self.punctuations is None:
             self.punctuations = string.punctuation
+
+        # Let user provide a tokenizer
+        self.tokenizer = tokenizer
+        if self.tokenizer is None:
+            self.tokenizer = wordpunct_tokenize
 
         # All things which act as sentence breaks during keyword extraction.
         self.to_ignore = set(chain(self.stopwords, self.punctuations))
@@ -187,7 +193,7 @@ class Rake(object):
         phrase_list = set()
         # Create contender phrases from sentences.
         for sentence in sentences:
-            word_list = [word.lower() for word in wordpunct_tokenize(sentence)]
+            word_list = [word.lower() for word in self.tokenizer(sentence)]
             phrase_list.update(self._get_phrase_list_from_words(word_list))
         return phrase_list
 
