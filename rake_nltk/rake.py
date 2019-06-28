@@ -12,6 +12,7 @@ from itertools import chain, groupby, product
 import nltk
 from enum import Enum
 from nltk.tokenize import wordpunct_tokenize
+import re
 
 
 class Metric(Enum):
@@ -28,7 +29,7 @@ class Rake(object):
     def __init__(
         self,
         stopwords=None,
-        punctuations=None,
+        punctuations_allowed=None,
         tokenizer=None,
         language="english",
         ranking_metric=Metric.DEGREE_TO_FREQUENCY_RATIO,
@@ -38,7 +39,7 @@ class Rake(object):
         """Constructor.
 
         :param stopwords: List of Words to be ignored for keyword extraction.
-        :param punctuations: Punctuations to be ignored for keyword extraction.
+        :param punctuations_allowed: Punctuations that will be explicitly not ignored
         :param language: Language to be used for stopwords
         :param max_length: Maximum limit on the number of words in a phrase
                            (Inclusive. Defaults to 100000)
@@ -56,18 +57,15 @@ class Rake(object):
         if self.stopwords is None:
             self.stopwords = nltk.corpus.stopwords.words(language)
 
-        # If punctuations are not provided we ignore all punctuation symbols.
-        self.punctuations = punctuations
-        if self.punctuations is None:
-            self.punctuations = string.punctuation
+        #string.translate only works in Python3
+        allowed_chars = 'a-zA-Z0-9_'
+        self.punctuation_regex = re.compile('[^' + ''.join(filter(None, [allowed_chars, re.escape(punctuations_allowed)])) + ']')
+
 
         # Let user provide a tokenizer
         self.tokenizer = tokenizer
         if self.tokenizer is None:
             self.tokenizer = wordpunct_tokenize
-
-        # All things which act as sentence breaks during keyword extraction.
-        self.to_ignore = set(chain(self.stopwords, self.punctuations))
 
         # Assign min or max length to the attributes
         self.min_length = min_length
@@ -197,6 +195,16 @@ class Rake(object):
             phrase_list.update(self._get_phrase_list_from_words(word_list))
         return phrase_list
 
+    def _confirm_word_validity(self, word):
+        """ Remove if the word has a punctuation in it that we should split on
+            OR, if the word is in stop words,
+        """
+        if self.punctuation_regex.search(word):
+            return False
+        return word not in self.stopwords
+
+
+
     def _get_phrase_list_from_words(self, word_list):
         """Method to create contender phrases from the list of words that form
         a sentence by dropping stopwords and punctuations and grouping the left
@@ -219,7 +227,7 @@ class Rake(object):
         :return: List of contender phrases that are formed after dropping
                  stopwords and punctuations.
         """
-        groups = groupby(word_list, lambda x: x not in self.to_ignore)
+        groups = groupby(word_list, lambda x: self._confirm_word_validity(x))
         phrases = [tuple(group[1]) for group in groups if group[0]]
         return list(
             filter(
