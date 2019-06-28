@@ -29,7 +29,7 @@ class Rake(object):
     def __init__(
         self,
         stopwords=None,
-        punctuations_allowed=None,
+        punctuations_allowed='',
         tokenizer=None,
         language="english",
         ranking_metric=Metric.DEGREE_TO_FREQUENCY_RATIO,
@@ -59,7 +59,7 @@ class Rake(object):
 
         #string.translate only works in Python3
         allowed_chars = 'a-zA-Z0-9_'
-        self.punctuation_regex = re.compile('[^' + ''.join(filter(None, [allowed_chars, re.escape(punctuations_allowed)])) + ']')
+        self.punctuation_regex = re.compile('[^' + ''.join([allowed_chars, re.escape(punctuations_allowed)]) + ']')
 
 
         # Let user provide a tokenizer
